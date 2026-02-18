@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
@@ -46,6 +46,7 @@ export function storeApiKey(apiKey: string): string {
   writeFileSync(configPath, JSON.stringify({ api_key: apiKey }, null, 2) + '\n', {
     mode: 0o600,
   });
+  chmodSync(configPath, 0o600);
 
   return configPath;
 }
