@@ -3,6 +3,7 @@ import { Command } from '@commander-js/extra-typings';
 import { authCommand } from './commands/auth/index';
 import { emailsCommand } from './commands/emails/index';
 import { domainsCommand } from './commands/domains/index';
+import { apiKeysCommand } from './commands/api-keys/index';
 import { doctorCommand } from './commands/doctor';
 import { VERSION } from './lib/version';
 
@@ -30,6 +31,7 @@ Examples:
   .addCommand(authCommand)
   .addCommand(emailsCommand)
   .addCommand(domainsCommand)
+  .addCommand(apiKeysCommand)
   .addCommand(doctorCommand);
 
 program.parse();
