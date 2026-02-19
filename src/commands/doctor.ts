@@ -248,9 +248,7 @@ Examples:
 
     const hasFails = checks.some((c) => c.status === 'fail');
 
-    if (globalOpts.json || !process.stdout.isTTY) {
-      outputResult({ ok: !hasFails, checks }, { json: true });
-    } else {
+    if (!globalOpts.json && isInteractive()) {
       console.log('');
       for (const check of checks) {
         const icon = statusIcons[check.status];
@@ -260,6 +258,8 @@ Examples:
         }
       }
       console.log('');
+    } else {
+      outputResult({ ok: !hasFails, checks }, { json: globalOpts.json });
     }
 
     if (hasFails) {
