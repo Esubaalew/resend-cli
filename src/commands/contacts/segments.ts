@@ -4,7 +4,8 @@ import { requireClient } from '../../lib/client';
 import { createSpinner } from '../../lib/spinner';
 import { outputError, outputResult, errorMessage } from '../../lib/output';
 import { isInteractive } from '../../lib/tty';
-import { renderSegmentsTable, segmentContactIdentifier } from './utils';
+import { renderSegmentsTable } from '../segments/utils';
+import { segmentContactIdentifier } from './utils';
 
 export const listContactSegmentsCommand = new Command('segments')
   .description('List the segments a contact belongs to')

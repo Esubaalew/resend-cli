@@ -1,4 +1,4 @@
-import type { Segment, ContactTopic, ContactSegmentsBaseOptions } from 'resend';
+import type { ContactTopic, ContactSegmentsBaseOptions } from 'resend';
 import type { GlobalOpts } from '../../lib/client';
 import { outputError } from '../../lib/output';
 import { renderTable } from '../../lib/table';
@@ -10,11 +10,6 @@ export function renderContactsTable(
 ): string {
   const rows = contacts.map((c) => [c.email, c.first_name ?? '', c.last_name ?? '', c.unsubscribed ? 'yes' : 'no', c.id]);
   return renderTable(['Email', 'First Name', 'Last Name', 'Unsubscribed', 'ID'], rows, '(no contacts)');
-}
-
-export function renderSegmentsTable(segments: Segment[]): string {
-  const rows = segments.map((s) => [s.name, s.id, s.created_at]);
-  return renderTable(['Name', 'ID', 'Created'], rows, '(no segments)');
 }
 
 export function renderTopicsTable(topics: ContactTopic[]): string {
