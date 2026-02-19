@@ -7,6 +7,7 @@ import { apiKeysCommand } from './commands/api-keys/index';
 import { broadcastsCommand } from './commands/broadcasts/index';
 import { contactsCommand } from './commands/contacts/index';
 import { contactPropertiesCommand } from './commands/contact-properties/index';
+import { segmentsCommand } from './commands/segments/index';
 import { doctorCommand } from './commands/doctor';
 import { VERSION } from './lib/version';
 
@@ -38,6 +39,7 @@ Examples:
   .addCommand(broadcastsCommand)
   .addCommand(contactsCommand)
   .addCommand(contactPropertiesCommand)
+  .addCommand(segmentsCommand)
   .addCommand(doctorCommand);
 
 program.parse();
