@@ -1,8 +1,7 @@
 import { Command } from '@commander-js/extra-typings';
-import * as p from '@clack/prompts';
 import type { GlobalOpts } from '../../lib/client';
 import { requireClient } from '../../lib/client';
-import { cancelAndExit } from '../../lib/prompts';
+import { confirmDelete } from '../../lib/prompts';
 import { createSpinner } from '../../lib/spinner';
 import { outputError, outputResult, errorMessage } from '../../lib/output';
 import { isInteractive } from '../../lib/tty';
@@ -36,22 +35,14 @@ Examples:
 
     const resend = requireClient(globalOpts);
 
-    if (!opts.yes && !isInteractive()) {
-      outputError(
-        { message: 'Use --yes to confirm deletion in non-interactive mode.', code: 'confirmation_required' },
-        { json: globalOpts.json }
-      );
-    }
-
-    if (!opts.yes && isInteractive()) {
-      const confirmed = await p.confirm({ message: `Delete domain ${id}? This cannot be undone.` });
-      if (p.isCancel(confirmed) || !confirmed) cancelAndExit('Deletion cancelled.');
+    if (!opts.yes) {
+      await confirmDelete(id, `Delete domain ${id}? This cannot be undone.`, globalOpts);
     }
 
     const spinner = createSpinner('Deleting domain...', 'braille');
 
     try {
-      const { data, error } = await resend.domains.remove(id);
+      const { error } = await resend.domains.remove(id);
 
       if (error) {
         spinner.fail('Failed to delete domain');
@@ -59,7 +50,12 @@ Examples:
       }
 
       spinner.stop('Domain deleted');
-      outputResult(data, { json: globalOpts.json });
+
+      if (!globalOpts.json && isInteractive()) {
+        console.log('Domain deleted.');
+      } else {
+        outputResult({ object: 'domain', id, deleted: true }, { json: globalOpts.json });
+      }
     } catch (err) {
       spinner.fail('Failed to delete domain');
       outputError(
