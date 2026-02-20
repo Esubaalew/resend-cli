@@ -12,12 +12,12 @@ import { audiencesCommand } from './commands/audiences/index';
 import { topicsCommand } from './commands/topics/index';
 import { webhooksCommand } from './commands/webhooks/index';
 import { doctorCommand } from './commands/doctor';
-import { VERSION } from './lib/version';
+import { VERSION, PACKAGE_NAME } from './lib/version';
 
 const program = new Command()
   .name('resend')
   .description('Resend CLI — email for developers')
-  .version(VERSION)
+  .version(`${PACKAGE_NAME} v${VERSION}`, '-v, --version', 'Output the current version')
   .option('--api-key <key>', 'Resend API key (overrides env/config)')
   .option('--json', 'Force JSON output')
   .configureHelp({ showGlobalOptions: true })
