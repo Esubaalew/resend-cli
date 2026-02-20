@@ -88,7 +88,7 @@ jobs:
     steps:
       - name: Dispatch publish-release workflow on tap
         env:
-          TAP_WORKFLOW_PAT: ${{ secrets.TAP_WORKFLOW_PAT }}
+          GH_TOKEN: ${{ secrets.TAP_WORKFLOW_PAT }}
         run: |
           gh workflow run publish-release.yml \
             --repo rafa-thayto/homebrew-tap \
