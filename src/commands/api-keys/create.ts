@@ -6,6 +6,7 @@ import { cancelAndExit } from '../../lib/prompts';
 import { createSpinner } from '../../lib/spinner';
 import { outputError, outputResult, errorMessage } from '../../lib/output';
 import { isInteractive } from '../../lib/tty';
+import { buildHelpText } from '../../lib/help-text';
 
 export const createApiKeyCommand = new Command('create')
   .description('Create a new API key and display the token (shown once — store it immediately)')
@@ -19,30 +20,22 @@ export const createApiKeyCommand = new Command('create')
   .option('--domain-id <id>', 'Restrict a sending_access key to a single domain ID')
   .addHelpText(
     'after',
-    `
-Non-interactive: --name is required (no prompts when stdin/stdout is not a TTY).
+    buildHelpText({
+      context: `Non-interactive: --name is required (no prompts when stdin/stdout is not a TTY).
 
 Permissions:
   full_access     Full API access (default)
-  sending_access  Send-only access; optionally scope to a domain with --domain-id
-
-Global options (defined on root):
-  --api-key <key>  API key (or set RESEND_API_KEY env var)
-  --json           Force JSON output (also auto-enabled when stdout is piped)
-
-Output (--json or piped):
-  {"id":"<id>","token":"<token>"}
-  The token is only returned at creation time and cannot be retrieved again.
-
-Errors (exit code 1):
-  {"error":{"message":"<message>","code":"<code>"}}
-  Codes: auth_error | missing_name | create_error
-
-Examples:
-  $ resend api-keys create --name "Production"
-  $ resend api-keys create --name "CI Token" --permission sending_access
-  $ resend api-keys create --name "Domain Token" --permission sending_access --domain-id <domain-id>
-  $ resend api-keys create --name "Production" --json`
+  sending_access  Send-only access; optionally scope to a domain with --domain-id`,
+      output: `  {"id":"<id>","token":"<token>"}
+  The token is only returned at creation time and cannot be retrieved again.`,
+      errorCodes: ['auth_error', 'missing_name', 'create_error'],
+      examples: [
+        'resend api-keys create --name "Production"',
+        'resend api-keys create --name "CI Token" --permission sending_access',
+        'resend api-keys create --name "Domain Token" --permission sending_access --domain-id <domain-id>',
+        'resend api-keys create --name "Production" --json',
+      ],
+    })
   )
   .action(async (opts, cmd) => {
     const globalOpts = cmd.optsWithGlobals() as GlobalOpts;

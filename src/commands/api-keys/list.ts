@@ -5,27 +5,21 @@ import { createSpinner } from '../../lib/spinner';
 import { outputError, outputResult, errorMessage } from '../../lib/output';
 import { isInteractive } from '../../lib/tty';
 import { renderApiKeysTable } from './utils';
+import { buildHelpText } from '../../lib/help-text';
 
 export const listApiKeysCommand = new Command('list')
   .description('List all API keys (IDs and names — tokens are never returned by this endpoint)')
   .addHelpText(
     'after',
-    `
-Global options (defined on root):
-  --api-key <key>  API key (or set RESEND_API_KEY env var)
-  --json           Force JSON output (also auto-enabled when stdout is piped)
-
-Output (--json or piped):
-  {"object":"list","data":[{"id":"<id>","name":"<name>","created_at":"<date>"}]}
-  Tokens are never included in list responses.
-
-Errors (exit code 1):
-  {"error":{"message":"<message>","code":"<code>"}}
-  Codes: auth_error | list_error
-
-Examples:
-  $ resend api-keys list
-  $ resend api-keys list --json`
+    buildHelpText({
+      output: `  {"object":"list","data":[{"id":"<id>","name":"<name>","created_at":"<date>"}]}
+  Tokens are never included in list responses.`,
+      errorCodes: ['auth_error', 'list_error'],
+      examples: [
+        'resend api-keys list',
+        'resend api-keys list --json',
+      ],
+    })
   )
   .action(async (_opts, cmd) => {
     const globalOpts = cmd.optsWithGlobals() as GlobalOpts;
