@@ -1,7 +1,13 @@
 import spinners from 'unicode-animations';
-import { isInteractive } from './tty';
+import { isInteractive, isUnicodeSupported } from './tty';
 import type { GlobalOpts } from './client';
 import { errorMessage, outputError } from './output';
+
+// Status symbols generated via String.fromCodePoint() — never literal Unicode in
+// source — to prevent UTF-8 → Latin-1 corruption when the npm package is bundled.
+const TICK  = isUnicodeSupported ? String.fromCodePoint(0x2714) : 'v'; // ✔
+const WARN  = isUnicodeSupported ? String.fromCodePoint(0x26a0) : '!'; // ⚠
+const CROSS = isUnicodeSupported ? String.fromCodePoint(0x2717) : 'x'; // ✗
 
 type SdkResponse<T> = { data: T | null; error: { message: string } | null };
 
@@ -59,15 +65,15 @@ export function createSpinner(message: string, name: SpinnerName = 'braille') {
     },
     stop(msg: string) {
       clearInterval(timer);
-      process.stderr.write(`\r\x1B[2K  ✔ ${msg}\n`);
+      process.stderr.write(`\r\x1B[2K  ${TICK} ${msg}\n`);
     },
     warn(msg: string) {
       clearInterval(timer);
-      process.stderr.write(`\r\x1B[2K  ⚠ ${msg}\n`);
+      process.stderr.write(`\r\x1B[2K  ${WARN} ${msg}\n`);
     },
     fail(msg: string) {
       clearInterval(timer);
-      process.stderr.write(`\r\x1B[2K  ✗ ${msg}\n`);
+      process.stderr.write(`\r\x1B[2K  ${CROSS} ${msg}\n`);
     },
   };
 }
