@@ -6,15 +6,17 @@ import type { GlobalOpts } from '../../lib/client';
 import { outputError, outputResult, errorMessage } from '../../lib/output';
 import { isInteractive } from '../../lib/tty';
 import { buildHelpText } from '../../lib/help-text';
+import { resolveApiKey } from '../../lib/config';
 import { mergeJsonConfig } from './utils';
 
-const RESEND_MCP_ENTRY = { command: 'resend', args: ['mcp', 'serve'] };
-
 export async function setupClaudeCode(globalOpts: GlobalOpts): Promise<void> {
+  const resolved = resolveApiKey(globalOpts.apiKey);
+  const mcpAddArgs = ['mcp', 'add', 'resend'];
+  if (resolved?.key) mcpAddArgs.push('-e', `RESEND_API_KEY=${resolved.key}`);
+  mcpAddArgs.push('--', 'npx', '-y', 'resend-mcp');
+
   try {
-    execFileSync('claude', ['mcp', 'add', 'resend', '--', 'resend', 'mcp', 'serve'], {
-      stdio: 'inherit',
-    });
+    execFileSync('claude', mcpAddArgs, { stdio: 'inherit' });
   } catch (err: unknown) {
     const isNotFound =
       err instanceof Error &&
@@ -38,7 +40,11 @@ export async function setupClaudeCode(globalOpts: GlobalOpts): Promise<void> {
         ...existing,
         mcpServers: {
           ...(existing.mcpServers as Record<string, unknown> | undefined),
-          resend: RESEND_MCP_ENTRY,
+          resend: {
+            command: 'npx',
+            args: ['-y', 'resend-mcp'],
+            env: { RESEND_API_KEY: resolved?.key ?? '' },
+          },
         },
       }));
     } catch (writeErr) {
@@ -76,18 +82,22 @@ export const claudeCodeCommand = new Command('claude-code')
   .addHelpText('after', buildHelpText({
     setup: true,
     context: `What it does:
-  Runs \`claude mcp add resend -- resend mcp serve\` using the official Claude Code CLI.
+  Runs \`claude mcp add resend -- npx -y resend-mcp\` using the official Claude Code CLI.
   If the \`claude\` binary is not installed, falls back to writing ~/.claude.json directly.
 
 Primary method (requires claude CLI):
-  claude mcp add resend -- resend mcp serve
+  claude mcp add [-e RESEND_API_KEY=<key>] resend -- npx -y resend-mcp
   Verify with: claude mcp list
 
 Fallback method (no claude CLI):
   Writes ~/.claude.json
   {
     "mcpServers": {
-      "resend": { "command": "resend", "args": ["mcp", "serve"] }
+      "resend": {
+        "command": "npx",
+        "args": ["-y", "resend-mcp"],
+        "env": { "RESEND_API_KEY": "<your-api-key>" }
+      }
     }
   }
 

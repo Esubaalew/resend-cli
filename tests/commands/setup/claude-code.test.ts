@@ -17,6 +17,8 @@ mock.module('node:fs', () => ({
   mkdirSync: mockMkdirSync,
   readdirSync: mockReaddirSync,
   lstatSync: mockLstatSync,
+  unlinkSync: mock(() => {}),
+  chmodSync: mock(() => {}),
 }));
 
 describe('setupClaudeCode', () => {
@@ -28,6 +30,8 @@ describe('setupClaudeCode', () => {
     mockReadFileSync.mockClear();
     mockExistsSync.mockClear();
     mockMkdirSync.mockClear();
+    // Remove env key so resolveApiKey returns null → no -e flag in args
+    delete process.env.RESEND_API_KEY;
   });
 
   afterEach(() => restoreEnv());
@@ -40,8 +44,8 @@ describe('setupClaudeCode', () => {
 
       expect(mockExecFileSync).toHaveBeenCalledWith(
         'claude',
-        ['mcp', 'add', 'resend', '--', 'resend', 'mcp', 'serve'],
-        expect.objectContaining({ stdio: 'inherit' }),
+        ['mcp', 'add', 'resend', '--', 'npx', '-y', 'resend-mcp'],
+        { stdio: 'inherit' },
       );
     } finally {
       restore();
