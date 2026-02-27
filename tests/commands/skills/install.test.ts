@@ -1,5 +1,6 @@
 import { describe, test, expect, mock, afterEach } from 'bun:test';
 import { captureTestEnv, setupOutputSpies, mockExitThrow, expectExit1 } from '../../helpers';
+import type { InstallTarget } from '../../../src/commands/skills/install';
 
 const mockWriteFileSync = mock(() => {});
 const mockMkdirSync = mock(() => {});
@@ -34,6 +35,8 @@ const MOCK_TREE = {
   ],
 };
 
+const SINGLE_TARGET: InstallTarget[] = [{ name: 'test', dir: '/project/.claude/skills' }];
+
 function makeMockFetch(treeData = MOCK_TREE, fileContent = '# skill content') {
   return mock(async (url: string | URL | Request) => {
     if (String(url).includes('git/trees')) {
@@ -59,7 +62,7 @@ describe('installSkills', () => {
     const { logSpy, restore } = setupOutputSpies();
     try {
       const { installSkills } = await import('../../../src/commands/skills/install');
-      await installSkills('/project/.claude/skills', { json: true });
+      await installSkills(SINGLE_TARGET, { json: true });
 
       // 12 items in tree, 5 excluded → 7 actual files
       expect(mockWriteFileSync).toHaveBeenCalledTimes(7);
@@ -73,7 +76,25 @@ describe('installSkills', () => {
         'templates',
       ]);
       expect(output.files).toBe(7);
-      expect(output.target).toBe('/project/.claude/skills');
+      expect(output.targets).toEqual([{ name: 'test', dir: '/project/.claude/skills' }]);
+    } finally {
+      restore();
+    }
+  });
+
+  test('writes to all targets when multiple targets provided', async () => {
+    globalThis.fetch = makeMockFetch();
+    const { restore } = setupOutputSpies();
+    const multiTargets: InstallTarget[] = [
+      { name: 'claude-code', dir: '/project/.claude/skills' },
+      { name: 'agents', dir: '/project/.agents/skills' },
+    ];
+    try {
+      const { installSkills } = await import('../../../src/commands/skills/install');
+      await installSkills(multiTargets, { json: true });
+
+      // 7 files × 2 targets
+      expect(mockWriteFileSync).toHaveBeenCalledTimes(14);
     } finally {
       restore();
     }
@@ -84,7 +105,7 @@ describe('installSkills', () => {
     const { restore } = setupOutputSpies();
     try {
       const { installSkills } = await import('../../../src/commands/skills/install');
-      await installSkills('/project/.claude/skills', { json: true });
+      await installSkills(SINGLE_TARGET, { json: true });
 
       const writtenPaths = mockWriteFileSync.mock.calls.map((c) => c[0] as string);
       expect(writtenPaths.some((p) => p.includes('resend/SKILL.md'))).toBe(true);
@@ -102,7 +123,7 @@ describe('installSkills', () => {
     const { restore } = setupOutputSpies();
     try {
       const { installSkills } = await import('../../../src/commands/skills/install');
-      await installSkills('/project/.claude/skills', { json: true });
+      await installSkills(SINGLE_TARGET, { json: true });
 
       const mkdirCalls = mockMkdirSync.mock.calls.map((c) => c[0] as string);
       expect(mkdirCalls.some((p) => p.includes('send-email'))).toBe(true);
@@ -120,7 +141,7 @@ describe('installSkills', () => {
     const exitSpy = mockExitThrow();
     try {
       const { installSkills } = await import('../../../src/commands/skills/install');
-      await expectExit1(() => installSkills('/project/.claude/skills', { json: true }));
+      await expectExit1(() => installSkills(SINGLE_TARGET, { json: true }));
     } finally {
       restore();
       exitSpy.mockRestore();
@@ -144,7 +165,7 @@ describe('installSkills', () => {
     const exitSpy = mockExitThrow();
     try {
       const { installSkills } = await import('../../../src/commands/skills/install');
-      await expectExit1(() => installSkills('/project/.claude/skills', { json: true }));
+      await expectExit1(() => installSkills(SINGLE_TARGET, { json: true }));
     } finally {
       restore();
       exitSpy.mockRestore();
@@ -160,7 +181,7 @@ describe('installSkills', () => {
     const exitSpy = mockExitThrow();
     try {
       const { installSkills } = await import('../../../src/commands/skills/install');
-      await expectExit1(() => installSkills('/project/.claude/skills', { json: true }));
+      await expectExit1(() => installSkills(SINGLE_TARGET, { json: true }));
     } finally {
       restore();
       exitSpy.mockRestore();

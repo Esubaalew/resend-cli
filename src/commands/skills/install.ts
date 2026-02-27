@@ -1,7 +1,8 @@
 import { Command } from '@commander-js/extra-typings';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import type { GlobalOpts } from '../../lib/client';
 import { outputError, outputResult, errorMessage } from '../../lib/output';
 import { isInteractive } from '../../lib/tty';
@@ -22,6 +23,8 @@ const EXCLUDED = [
   /^\./,  // root-level dotfiles and dot-directories (.gitignore, .github/, etc.)
 ];
 
+export type InstallTarget = { name: string; dir: string };
+
 function shouldInclude(path: string): boolean {
   return !EXCLUDED.some((re) => re.test(path));
 }
@@ -29,6 +32,29 @@ function shouldInclude(path: string): boolean {
 // Root SKILL.md lives in its own folder so it's consistent with sub-skills
 function destPath(repoPath: string): string {
   return repoPath === 'SKILL.md' ? 'resend/SKILL.md' : repoPath;
+}
+
+// Project-level targets: covers Claude Code + all universal agents (cursor, codex, copilot, cline)
+function projectTargets(cwd: string): InstallTarget[] {
+  return [
+    { name: 'claude-code', dir: join(cwd, '.claude', 'skills') },
+    { name: 'agents', dir: join(cwd, '.agents', 'skills') },
+  ];
+}
+
+// Global targets: only for agents detected on this machine
+function detectedGlobalTargets(home: string): InstallTarget[] {
+  return (
+    [
+      { name: 'claude-code', dir: join(home, '.claude', 'skills'), detect: join(home, '.claude') },
+      { name: 'cursor', dir: join(home, '.cursor', 'skills'), detect: join(home, '.cursor') },
+      { name: 'codex', dir: join(home, '.codex', 'skills'), detect: join(home, '.codex') },
+      { name: 'copilot', dir: join(home, '.copilot', 'skills'), detect: join(home, '.copilot') },
+      { name: 'openclaw', dir: join(home, '.openclaw', 'skills'), detect: join(home, '.openclaw') },
+    ] as Array<InstallTarget & { detect: string }>
+  )
+    .filter((t) => existsSync(t.detect))
+    .map(({ name, dir }) => ({ name, dir }));
 }
 
 async function fetchTree(): Promise<string[]> {
@@ -48,7 +74,7 @@ async function fetchContent(path: string): Promise<string> {
   return res.text();
 }
 
-export async function installSkills(skillsDir: string, globalOpts: GlobalOpts): Promise<void> {
+export async function installSkills(targets: InstallTarget[], globalOpts: GlobalOpts): Promise<void> {
   const spinner = createSpinner('Fetching skill list from GitHub...');
 
   let paths: string[];
@@ -62,18 +88,13 @@ export async function installSkills(skillsDir: string, globalOpts: GlobalOpts): 
     );
   }
 
-  spinner.update(`Installing ${paths.length} files...`);
+  spinner.update(`Installing ${paths.length} files to ${targets.length} target(s)...`);
 
-  const skillNames = new Set<string>();
-  let fileCount = 0;
-
+  // Fetch all file contents once, then write to every target
+  const contents = new Map<string, string>();
   for (const repoPath of paths) {
-    const dest = destPath(repoPath);
-    const fullPath = join(skillsDir, dest);
-
-    let content: string;
     try {
-      content = await fetchContent(repoPath);
+      contents.set(repoPath, await fetchContent(repoPath));
     } catch (err) {
       spinner.fail(`Failed to fetch ${repoPath}`);
       outputError(
@@ -81,46 +102,62 @@ export async function installSkills(skillsDir: string, globalOpts: GlobalOpts): 
         { json: globalOpts.json },
       );
     }
+  }
 
-    try {
-      mkdirSync(dirname(fullPath), { recursive: true });
-      writeFileSync(fullPath, content, 'utf8');
-    } catch (err) {
-      spinner.fail(`Failed to write ${dest}`);
-      outputError(
-        { message: `Failed to write ${dest}: ${errorMessage(err, 'unknown error')}`, code: 'write_error' },
-        { json: globalOpts.json },
-      );
+  for (const target of targets) {
+    for (const [repoPath, content] of contents) {
+      const dest = destPath(repoPath);
+      const fullPath = join(target.dir, dest);
+      try {
+        mkdirSync(dirname(fullPath), { recursive: true });
+        writeFileSync(fullPath, content, 'utf8');
+      } catch (err) {
+        spinner.fail(`Failed to write to ${target.name}`);
+        outputError(
+          { message: `Failed to write ${dest} to ${target.name}: ${errorMessage(err, 'unknown error')}`, code: 'write_error' },
+          { json: globalOpts.json },
+        );
+      }
     }
-
-    skillNames.add(dest.split('/')[0]);
-    fileCount++;
   }
 
   spinner.stop('Skills installed');
 
-  const installed = Array.from(skillNames).sort();
+  const installed = Array.from(new Set(paths.map((p) => destPath(p).split('/')[0]))).sort();
 
   if (!globalOpts.json && isInteractive()) {
     for (const skill of installed) {
       console.log(`  ✔ ${skill}`);
     }
-    console.log(`\n  ${fileCount} files installed → ${skillsDir}`);
+    for (const target of targets) {
+      console.log(`  → ${target.dir}`);
+    }
   } else {
-    outputResult({ installed, target: skillsDir, files: fileCount }, { json: globalOpts.json });
+    outputResult(
+      { installed, targets: targets.map((t) => ({ name: t.name, dir: t.dir })), files: paths.length },
+      { json: globalOpts.json },
+    );
   }
 }
 
 export const installSkillsCommand = new Command('install')
   .description('Install Resend Agent Skills from github.com/resend/resend-skills')
-  .option('--global', 'Install to ~/.claude/skills/ instead of .claude/skills/')
+  .option('--global', 'Install to global skill dirs for all detected agents')
   .addHelpText(
     'after',
     buildHelpText({
       setup: true,
-      context: `Fetches all skills from https://github.com/resend/resend-skills and writes them to:
-  - Project: .claude/skills/    (default — run from your project root)
-  - Global:  ~/.claude/skills/  (use --global for personal installation)
+      context: `Interactive mode (TTY):
+  Runs \`npx skills add resend/resend-skills\` — the official skills CLI handles
+  agent detection and lets you choose which agents to install to.
+
+Non-interactive / agent mode (piped or --json):
+  Fetches skills from https://github.com/resend/resend-skills and writes to:
+  - Project (default): .claude/skills/  +  .agents/skills/
+      Covers Claude Code, Cursor, Codex, Copilot, Cline in one pass.
+  - Global (--global):  detected per-agent dirs
+      ~/.claude/skills/  ~/.cursor/skills/  ~/.codex/skills/
+      ~/.copilot/skills/  ~/.openclaw/skills/  (only for detected agents)
 
 Skills installed:
   resend             Root skill — routes agent to the right sub-skill
@@ -128,8 +165,8 @@ Skills installed:
   resend-inbound     Receiving emails, webhooks, attachments
   templates          Create, publish, update, and delete email templates
   agent-email-inbox  AI agent email inbox with prompt injection protection`,
-      output: `  {"installed":["agent-email-inbox","resend","resend-inbound","send-email","templates"],"target":".claude/skills","files":12}`,
-      errorCodes: ['fetch_error', 'write_error'],
+      output: `  {"installed":["agent-email-inbox","resend","resend-inbound","send-email","templates"],"targets":[{"name":"claude-code","dir":".claude/skills"},{"name":"agents","dir":".agents/skills"}],"files":12}`,
+      errorCodes: ['fetch_error', 'write_error', 'install_error'],
       examples: [
         'resend skills install',
         'resend skills install --global',
@@ -139,8 +176,23 @@ Skills installed:
   )
   .action(async (opts, cmd) => {
     const globalOpts = cmd.optsWithGlobals() as GlobalOpts;
-    const skillsDir = opts.global
-      ? join(homedir(), '.claude', 'skills')
-      : join(process.cwd(), '.claude', 'skills');
-    await installSkills(skillsDir, globalOpts);
+
+    // Interactive: delegate to the official skills CLI which handles agent detection + selection
+    if (!globalOpts.json && isInteractive()) {
+      try {
+        execFileSync('npx', ['skills', 'add', 'resend/resend-skills'], { stdio: 'inherit' });
+      } catch (err) {
+        outputError(
+          { message: `Failed to run npx skills: ${errorMessage(err, 'unknown error')}`, code: 'install_error' },
+          { json: globalOpts.json },
+        );
+      }
+      return;
+    }
+
+    // Non-interactive: deterministic fetch-and-write for agents and scripts
+    const home = homedir();
+    const cwd = process.cwd();
+    const targets = opts.global ? detectedGlobalTargets(home) : projectTargets(cwd);
+    await installSkills(targets, globalOpts);
   });
