@@ -29,7 +29,7 @@ export const setupCommand = new Command('setup')
     context: `Targets:
   cursor          Write MCP config to ~/.cursor/mcp.json
   claude-desktop  Write MCP config to Claude Desktop config file
-  claude-code     Run \`claude mcp add resend -- resend mcp serve\`
+  claude-code     Run \`claude mcp add resend -- npx -y resend-mcp\`
   vscode          Write .vscode/mcp.json in current directory
   openclaw        Create ~/clawd/skills/resend.md skill file
 
@@ -38,7 +38,10 @@ Behavior:
   \`resend setup <target>\`   Configure a specific tool directly
 
 All subcommands are idempotent — running them twice is safe.
-Each subcommand outputs JSON when --json is set or stdout is not a TTY.`,
+Each subcommand outputs JSON when --json is set or stdout is not a TTY.
+
+To install Resend Agent Skills for Claude Code:
+  resend skills install`,
     errorCodes: ['missing_target', 'config_write_error', 'claude_mcp_add_failed'],
     examples: [
       'resend setup',
