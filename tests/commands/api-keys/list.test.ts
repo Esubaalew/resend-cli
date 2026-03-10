@@ -115,7 +115,8 @@ describe('api-keys list command', () => {
     mockList.mockResolvedValueOnce({
       data: null,
       error: { message: 'Unauthorized', name: 'unauthorized' },
-    } as any);
+    } as // biome-ignore lint/suspicious/noExplicitAny: test mock
+    any);
     errorSpy = spyOn(console, 'error').mockImplementation(() => {});
     stderrSpy = spyOn(process.stderr, 'write').mockImplementation(() => true);
     exitSpy = mockExitThrow();

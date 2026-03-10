@@ -25,17 +25,8 @@
         "noUnusedImports": "error",
         "noUnusedVariables": "error"
       },
-      "suspicious": {
-        "noExplicitAny": "off",
-        "noConsole": "off"
-      },
       "style": {
-        "useBlockStatements": "error",
-        "noNonNullAssertion": "off",
-        "noParameterAssign": "off"
-      },
-      "performance": {
-        "noAccumulatingSpread": "off"
+        "useBlockStatements": "error"
       }
     }
   },
