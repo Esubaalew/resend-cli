@@ -17,9 +17,10 @@ describe('buildHelpText', () => {
       '\n' +
         'Some context line\n\nNon-interactive: --required-flag <value>' +
         '\n\n' +
-        'Global options (defined on root):\n' +
-        '  --api-key <key>  API key (or set RESEND_API_KEY env var)\n' +
-        '  --json           Force JSON output (also auto-enabled when stdout is piped)' +
+        'Global options:\n' +
+        '  --api-key <key>   API key (or set RESEND_API_KEY env var)\n' +
+        '  --team <name>     Team profile to use (overrides RESEND_TEAM)\n' +
+        '  --json            Force JSON output (also auto-enabled when stdout is piped)' +
         '\n\n' +
         'Output (--json or piped):\n' +
         '  {"id":"em_123"}' +
@@ -43,9 +44,9 @@ describe('buildHelpText', () => {
     });
 
     expect(result).not.toContain('--api-key');
-    expect(result).toContain('--json  Force JSON output');
-    expect(result).not.toContain('--json           Force JSON output');
-    expect(result).toContain('Global options (defined on root):');
+    expect(result).toContain('--json         Force JSON output');
+    expect(result).not.toContain('--json            Force JSON output');
+    expect(result).toContain('Global options:');
   });
 
   it('index command — no output, no errorCodes', () => {
@@ -56,7 +57,7 @@ describe('buildHelpText', () => {
 
     expect(result).not.toContain('Output (--json or piped):');
     expect(result).not.toContain('Errors (exit code 1):');
-    expect(result).toContain('Global options (defined on root):');
+    expect(result).toContain('Global options:');
     expect(result).toContain('Examples:');
     expect(result).toContain('  $ resend emails send');
     expect(result).toContain('  $ resend emails receiving list');
@@ -69,7 +70,7 @@ describe('buildHelpText', () => {
       examples: ['resend domains list'],
     });
 
-    expect(result.startsWith('\nGlobal options (defined on root):')).toBe(true);
+    expect(result.startsWith('\nGlobal options:')).toBe(true);
   });
 
   it('multi-line output — verbatim after the Output header', () => {

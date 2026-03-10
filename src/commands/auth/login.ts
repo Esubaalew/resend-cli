@@ -35,12 +35,8 @@ export const loginCommand = new Command('login')
     'after',
     buildHelpText({
       setup: true,
-      context: `Non-interactive: --key is required (no prompts will appear when stdin/stdout is not a TTY).
-
-Alternative: Set RESEND_API_KEY environment variable — no login needed.
-Credentials stored at: ~/.config/resend/credentials.json
-  (Linux: $XDG_CONFIG_HOME/resend/credentials.json)
-  (Windows: %APPDATA%\\resend\\credentials.json)`,
+      context:
+        'Non-interactive: --key is required (no prompts will appear when stdin/stdout is not a TTY).',
       output: `  {"success":true,"config_path":"<path>"}`,
       errorCodes: ['missing_key', 'invalid_key_format', 'validation_failed'],
       examples: [
@@ -183,6 +179,16 @@ Credentials stored at: ~/.config/resend/credentials.json
         } else {
           teamName = choice;
         }
+      } else {
+        const newName = await p.text({
+          message: 'Enter a team name (or press Enter for "default"):',
+          defaultValue: 'default',
+          placeholder: 'default',
+        });
+        if (p.isCancel(newName)) {
+          cancelAndExit('Login cancelled.');
+        }
+        teamName = newName;
       }
     }
 

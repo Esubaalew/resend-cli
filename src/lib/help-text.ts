@@ -6,12 +6,14 @@ export interface HelpTextOptions {
   setup?: boolean; // true = --json only (no --api-key); default false = full API variant
 }
 
-const GLOBAL_OPTS_FULL = `Global options (defined on root):
-  --api-key <key>  API key (or set RESEND_API_KEY env var)
-  --json           Force JSON output (also auto-enabled when stdout is piped)`;
+const GLOBAL_OPTS_FULL = `Global options:
+  --api-key <key>   API key (or set RESEND_API_KEY env var)
+  --team <name>     Team profile to use (overrides RESEND_TEAM)
+  --json            Force JSON output (also auto-enabled when stdout is piped)`;
 
-const GLOBAL_OPTS_SETUP = `Global options (defined on root):
-  --json  Force JSON output`;
+const GLOBAL_OPTS_SETUP = `Global options:
+  --team <name>  Team profile to save the key to
+  --json         Force JSON output`;
 
 const ERROR_ENVELOPE = `  {"error":{"message":"<message>","code":"<code>"}}`;
 
