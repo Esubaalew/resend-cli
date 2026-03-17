@@ -17,18 +17,18 @@ import {
 } from '../../helpers';
 
 const mockCreate = vi.fn(async () => ({
-  data: { id: 'test-key-id', token: 're_testtoken1234567890' },
+  data: { object: 'template' as const, id: 'tmpl_abc123' },
   error: null,
 }));
 
 vi.mock('resend', () => ({
   Resend: class MockResend {
     constructor(public key: string) {}
-    apiKeys = { create: mockCreate };
+    templates = { create: mockCreate };
   },
 }));
 
-describe('api-keys create command', () => {
+describe('templates create command', () => {
   const restoreEnv = captureTestEnv();
   let spies: ReturnType<typeof setupOutputSpies> | undefined;
   let errorSpy: MockInstance | undefined;
@@ -56,72 +56,37 @@ describe('api-keys create command', () => {
     }
   });
 
-  test('creates API key with --name flag', async () => {
+  test('creates template with required flags', async () => {
     spies = setupOutputSpies();
 
-    const { createApiKeyCommand } = await import(
-      '../../../src/commands/api-keys/create'
+    const { createTemplateCommand } = await import(
+      '../../../src/commands/templates/create'
     );
-    await createApiKeyCommand.parseAsync(['--name', 'Production'], {
-      from: 'user',
-    });
+    await createTemplateCommand.parseAsync(
+      ['--name', 'Welcome', '--html', '<h1>Hello</h1>'],
+      { from: 'user' },
+    );
 
     expect(mockCreate).toHaveBeenCalledTimes(1);
     const args = mockCreate.mock.calls[0][0] as Record<string, unknown>;
-    expect(args.name).toBe('Production');
-  });
-
-  test('passes permission flag to SDK', async () => {
-    spies = setupOutputSpies();
-
-    const { createApiKeyCommand } = await import(
-      '../../../src/commands/api-keys/create'
-    );
-    await createApiKeyCommand.parseAsync(
-      ['--name', 'CI Token', '--permission', 'sending_access'],
-      { from: 'user' },
-    );
-
-    const args = mockCreate.mock.calls[0][0] as Record<string, unknown>;
-    expect(args.permission).toBe('sending_access');
-  });
-
-  test('passes domain_id (snake_case) to SDK when --domain-id is provided', async () => {
-    spies = setupOutputSpies();
-
-    const { createApiKeyCommand } = await import(
-      '../../../src/commands/api-keys/create'
-    );
-    await createApiKeyCommand.parseAsync(
-      [
-        '--name',
-        'Domain Token',
-        '--permission',
-        'sending_access',
-        '--domain-id',
-        'domain-123',
-      ],
-      { from: 'user' },
-    );
-
-    const args = mockCreate.mock.calls[0][0] as Record<string, unknown>;
-    expect(args.domain_id).toBe('domain-123');
+    expect(args.name).toBe('Welcome');
+    expect(args.html).toBe('<h1>Hello</h1>');
   });
 
   test('outputs JSON result when non-interactive', async () => {
     spies = setupOutputSpies();
 
-    const { createApiKeyCommand } = await import(
-      '../../../src/commands/api-keys/create'
+    const { createTemplateCommand } = await import(
+      '../../../src/commands/templates/create'
     );
-    await createApiKeyCommand.parseAsync(['--name', 'Production'], {
-      from: 'user',
-    });
+    await createTemplateCommand.parseAsync(
+      ['--name', 'Welcome', '--html', '<h1>Hello</h1>'],
+      { from: 'user' },
+    );
 
     const output = spies.logSpy.mock.calls[0][0] as string;
     const parsed = JSON.parse(output);
-    expect(parsed.id).toBe('test-key-id');
-    expect(parsed.token).toBe('re_testtoken1234567890');
+    expect(parsed.id).toBe('tmpl_abc123');
   });
 
   test('errors with missing_name when --name absent in non-interactive mode', async () => {
@@ -129,15 +94,35 @@ describe('api-keys create command', () => {
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     exitSpy = mockExitThrow();
 
-    const { createApiKeyCommand } = await import(
-      '../../../src/commands/api-keys/create'
+    const { createTemplateCommand } = await import(
+      '../../../src/commands/templates/create'
     );
     await expectExit1(() =>
-      createApiKeyCommand.parseAsync([], { from: 'user' }),
+      createTemplateCommand.parseAsync(['--html', '<h1>Hello</h1>'], {
+        from: 'user',
+      }),
     );
 
     const output = errorSpy.mock.calls.map((c) => c[0]).join(' ');
     expect(output).toContain('missing_name');
+  });
+
+  test('errors with missing_body when no body flag in non-interactive mode', async () => {
+    setNonInteractive();
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    exitSpy = mockExitThrow();
+
+    const { createTemplateCommand } = await import(
+      '../../../src/commands/templates/create'
+    );
+    await expectExit1(() =>
+      createTemplateCommand.parseAsync(['--name', 'Welcome'], {
+        from: 'user',
+      }),
+    );
+
+    const output = errorSpy.mock.calls.map((c) => c[0]).join(' ');
+    expect(output).toContain('missing_body');
   });
 
   test('errors with missing_name when --json is set even in TTY', async () => {
@@ -153,8 +138,8 @@ describe('api-keys create command', () => {
     exitSpy = mockExitThrow();
 
     const { Command } = await import('@commander-js/extra-typings');
-    const { createApiKeyCommand } = await import(
-      '../../../src/commands/api-keys/create'
+    const { createTemplateCommand } = await import(
+      '../../../src/commands/templates/create'
     );
     const program = new Command()
       .option('--profile <name>')
@@ -162,30 +147,17 @@ describe('api-keys create command', () => {
       .option('--json')
       .option('--api-key <key>')
       .option('-q, --quiet')
-      .addCommand(createApiKeyCommand);
-    commandRef = createApiKeyCommand as unknown as { parent: unknown };
+      .addCommand(createTemplateCommand);
+    commandRef = createTemplateCommand as unknown as { parent: unknown };
 
     await expectExit1(() =>
-      program.parseAsync(['create', '--json'], { from: 'user' }),
+      program.parseAsync(['create', '--json', '--html', '<h1>Hello</h1>'], {
+        from: 'user',
+      }),
     );
 
     const output = errorSpy.mock.calls.map((c) => c[0]).join(' ');
     expect(output).toContain('missing_name');
-  });
-
-  test('does not call SDK when missing_name error is raised', async () => {
-    setNonInteractive();
-    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    exitSpy = mockExitThrow();
-
-    const { createApiKeyCommand } = await import(
-      '../../../src/commands/api-keys/create'
-    );
-    await expectExit1(() =>
-      createApiKeyCommand.parseAsync([], { from: 'user' }),
-    );
-
-    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   test('errors with auth_error when no API key', async () => {
@@ -195,13 +167,14 @@ describe('api-keys create command', () => {
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     exitSpy = mockExitThrow();
 
-    const { createApiKeyCommand } = await import(
-      '../../../src/commands/api-keys/create'
+    const { createTemplateCommand } = await import(
+      '../../../src/commands/templates/create'
     );
     await expectExit1(() =>
-      createApiKeyCommand.parseAsync(['--name', 'Production'], {
-        from: 'user',
-      }),
+      createTemplateCommand.parseAsync(
+        ['--name', 'Welcome', '--html', '<h1>Hello</h1>'],
+        { from: 'user' },
+      ),
     );
 
     const output = errorSpy.mock.calls.map((c) => c[0]).join(' ');
@@ -211,7 +184,7 @@ describe('api-keys create command', () => {
   test('errors with create_error when SDK returns an error', async () => {
     setNonInteractive();
     mockCreate.mockResolvedValueOnce(
-      mockSdkError('Name already taken', 'validation_error'),
+      mockSdkError('Template name taken', 'validation_error'),
     );
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     stderrSpy = vi
@@ -219,13 +192,14 @@ describe('api-keys create command', () => {
       .mockImplementation(() => true);
     exitSpy = mockExitThrow();
 
-    const { createApiKeyCommand } = await import(
-      '../../../src/commands/api-keys/create'
+    const { createTemplateCommand } = await import(
+      '../../../src/commands/templates/create'
     );
     await expectExit1(() =>
-      createApiKeyCommand.parseAsync(['--name', 'Production'], {
-        from: 'user',
-      }),
+      createTemplateCommand.parseAsync(
+        ['--name', 'Welcome', '--html', '<h1>Hello</h1>'],
+        { from: 'user' },
+      ),
     );
 
     const output = errorSpy.mock.calls.map((c) => c[0]).join(' ');
