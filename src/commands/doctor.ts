@@ -1,7 +1,12 @@
 import { Command } from '@commander-js/extra-typings';
 import { Resend } from 'resend';
 import type { GlobalOpts } from '../lib/client';
-import { maskKey, readCredentials, resolveApiKeyAsync } from '../lib/config';
+import {
+  maskKey,
+  readCredentials,
+  resolveApiKeyAsync,
+  SENDING_KEY_MESSAGE,
+} from '../lib/config';
 import { getCredentialBackend } from '../lib/credential-store';
 import { buildHelpText } from '../lib/help-text';
 import { errorMessage, outputResult } from '../lib/output';
@@ -102,6 +107,15 @@ async function checkApiValidationAndDomains(
     const { data, error } = await resend.domains.list();
 
     if (error) {
+      const err = error as { name?: string; message?: string };
+      if (err.name === 'restricted_api_key') {
+        return {
+          name: 'API Validation',
+          status: 'warn',
+          message: `Sending-only API key`,
+          detail: SENDING_KEY_MESSAGE,
+        };
+      }
       return {
         name: 'API Validation',
         status: 'fail',

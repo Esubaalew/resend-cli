@@ -4,8 +4,9 @@ import { Resend } from 'resend';
 import { openInBrowser } from '../../lib/browser';
 import type { GlobalOpts } from '../../lib/client';
 import {
+  type ApiKeyPermission,
   listProfiles,
-  resolveApiKeyAsync,
+  SENDING_KEY_MESSAGE,
   setActiveProfile,
   storeApiKeyAsync,
   validateProfileName,
@@ -17,12 +18,6 @@ import { createSpinner } from '../../lib/spinner';
 import { isInteractive } from '../../lib/tty';
 
 const RESEND_API_KEYS_URL = 'https://resend.com/api-keys?new=true';
-
-const SOURCE_LABEL: Record<string, string> = {
-  flag: 'command line (--api-key)',
-  env: 'environment (RESEND_API_KEY)',
-  config: 'saved credentials',
-};
 
 export const loginCommand = new Command('login')
   .description('Save a Resend API key')
@@ -66,14 +61,9 @@ export const loginCommand = new Command('login')
       }
 
       p.intro('Resend Authentication');
-
-      const existing = await resolveApiKeyAsync();
-      if (existing) {
-        const sourceLabel = SOURCE_LABEL[existing.source] ?? existing.source;
-        p.log.info(
-          `Existing API key found (${sourceLabel}). Enter a new key to replace it.`,
-        );
-      }
+      p.log.info(
+        `Use a full access API key for complete CLI access.\n${SENDING_KEY_MESSAGE}`,
+      );
 
       const method = await p.select({
         message: 'How would you like to get your API key?',
@@ -132,22 +122,30 @@ export const loginCommand = new Command('login')
     }
 
     const spinner = createSpinner('Validating API key...', globalOpts.quiet);
+    let detectedPermission: ApiKeyPermission = 'full_access';
 
     try {
       const resend = new Resend(apiKey);
       const { error } = await resend.domains.list();
       if (error) {
-        spinner.fail('API key validation failed');
-        outputError(
-          {
-            message: error.message || 'Failed to validate API key',
-            code: 'validation_failed',
-          },
-          { json: globalOpts.json },
-        );
-        return;
+        const err = error as { name?: string; message?: string };
+        if (err.name === 'restricted_api_key') {
+          detectedPermission = 'sending_access';
+          spinner.warn('API key is valid (sending access only)');
+        } else {
+          spinner.fail('API key validation failed');
+          outputError(
+            {
+              message: err.message || 'Failed to validate API key',
+              code: 'validation_failed',
+            },
+            { json: globalOpts.json },
+          );
+          return;
+        }
+      } else {
+        spinner.stop('API key is valid (full access)');
       }
-      spinner.stop('API key is valid');
     } catch (err) {
       spinner.fail('API key validation failed');
       outputError(
@@ -228,7 +226,11 @@ export const loginCommand = new Command('login')
       }
     }
 
-    const { configPath, backend } = await storeApiKeyAsync(apiKey, profileName);
+    const { configPath, backend } = await storeApiKeyAsync(
+      apiKey,
+      profileName,
+      detectedPermission,
+    );
     const profileLabel = profileName || 'default';
 
     // Auto-switch to the newly added profile (only when user specified a profile)
@@ -253,6 +255,7 @@ export const loginCommand = new Command('login')
           config_path: configPath,
           profile: profileLabel,
           storage: backend.name,
+          permission: detectedPermission,
         },
         { json: true },
       );
