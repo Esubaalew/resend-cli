@@ -95,7 +95,10 @@ Variable interpolation:
       );
     }
 
-    if (opts.reactEmail != null && (opts.html != null || opts.htmlFile != null)) {
+    if (
+      opts.reactEmail != null &&
+      (opts.html != null || opts.htmlFile != null)
+    ) {
       outputError(
         {
           message: 'Cannot use --react-email with --html or --html-file',

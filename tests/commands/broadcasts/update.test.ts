@@ -286,7 +286,9 @@ describe('broadcasts update command', () => {
 
   test('treats empty --html-file as a provided file input', async () => {
     spies = setupOutputSpies();
-    readFileSpy = vi.spyOn(files, 'readFile').mockReturnValue('<p>From empty path</p>');
+    readFileSpy = vi
+      .spyOn(files, 'readFile')
+      .mockReturnValue('<p>From empty path</p>');
 
     const { updateBroadcastCommand } = await import(
       '../../../src/commands/broadcasts/update'
@@ -322,7 +324,9 @@ describe('broadcasts update command', () => {
 
   test('treats empty --text-file as a provided file input', async () => {
     spies = setupOutputSpies();
-    readFileSpy = vi.spyOn(files, 'readFile').mockReturnValue('Text from empty path');
+    readFileSpy = vi
+      .spyOn(files, 'readFile')
+      .mockReturnValue('Text from empty path');
 
     const { updateBroadcastCommand } = await import(
       '../../../src/commands/broadcasts/update'

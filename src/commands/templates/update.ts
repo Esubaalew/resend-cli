@@ -89,7 +89,10 @@ export const updateTemplateCommand = new Command('update')
 
     const id = await pickId(idArg, templatePickerConfig, globalOpts);
 
-    if (opts.reactEmail != null && (opts.html != null || opts.htmlFile != null)) {
+    if (
+      opts.reactEmail != null &&
+      (opts.html != null || opts.htmlFile != null)
+    ) {
       outputError(
         {
           message: 'Cannot use --react-email with --html or --html-file',
