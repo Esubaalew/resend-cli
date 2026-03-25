@@ -20,7 +20,18 @@ export function buildPaginationOpts(
   limit: number,
   after?: string,
   before?: string,
+  globalOpts?: GlobalOpts,
 ) {
+  if (after !== undefined && before !== undefined) {
+    outputError(
+      {
+        message:
+          'Cannot use --after and --before together. Pass only one cursor.',
+        code: 'invalid_pagination',
+      },
+      { json: globalOpts?.json },
+    );
+  }
   return after ? { limit, after } : before ? { limit, before } : { limit };
 }
 

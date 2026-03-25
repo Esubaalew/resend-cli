@@ -16,31 +16,49 @@ import {
   setupOutputSpies,
 } from '../../helpers';
 
-const mockList = vi.fn(async () => ({
-  data: {
-    object: 'list',
-    data: [
-      {
-        id: 'domain-1',
-        name: 'example.com',
-        status: 'verified',
-        region: 'us-east-1',
-        created_at: '2026-01-01T00:00:00.000Z',
-        capabilities: { sending: 'enabled', receiving: 'disabled' },
-      },
-      {
-        id: 'domain-2',
-        name: 'test.com',
-        status: 'pending',
-        region: 'eu-west-1',
-        created_at: '2026-01-02T00:00:00.000Z',
-        capabilities: { sending: 'enabled', receiving: 'disabled' },
-      },
-    ],
-    has_more: false,
-  },
-  error: null,
-}));
+const mockList = vi.fn(
+  async (
+    _opts?: Record<string, unknown>,
+  ): Promise<{
+    data: {
+      object: string;
+      data: Array<{
+        id: string;
+        name: string;
+        status: string;
+        region: string;
+        created_at: string;
+        capabilities: { sending: string; receiving: string };
+      }>;
+      has_more: boolean;
+    } | null;
+    error: { message: string; name: string } | null;
+  }> => ({
+    data: {
+      object: 'list',
+      data: [
+        {
+          id: 'domain-1',
+          name: 'example.com',
+          status: 'verified',
+          region: 'us-east-1',
+          created_at: '2026-01-01T00:00:00.000Z',
+          capabilities: { sending: 'enabled', receiving: 'disabled' },
+        },
+        {
+          id: 'domain-2',
+          name: 'test.com',
+          status: 'pending',
+          region: 'eu-west-1',
+          created_at: '2026-01-02T00:00:00.000Z',
+          capabilities: { sending: 'enabled', receiving: 'disabled' },
+        },
+      ],
+      has_more: false,
+    },
+    error: null,
+  }),
+);
 
 vi.mock('resend', () => ({
   Resend: class MockResend {
@@ -72,6 +90,14 @@ describe('domains list command', () => {
     exitSpy = undefined;
   });
 
+  function getFirstCallArgs(): unknown {
+    const firstCall = mockList.mock.calls.at(0);
+    if (!firstCall) {
+      throw new Error('Expected mockList to be called at least once');
+    }
+    return firstCall[0];
+  }
+
   test('calls SDK list and outputs domains as JSON', async () => {
     spies = setupOutputSpies();
 
@@ -95,8 +121,7 @@ describe('domains list command', () => {
     );
     await listDomainsCommand.parseAsync(['--limit', '25'], { from: 'user' });
 
-    const callArgs = mockList.mock.calls[0][0] as Record<string, unknown>;
-    expect(callArgs.limit).toBe(25);
+    expect(getFirstCallArgs()).toMatchObject({ limit: 25 });
   });
 
   test('passes after cursor to SDK', async () => {
@@ -109,8 +134,44 @@ describe('domains list command', () => {
       from: 'user',
     });
 
-    const callArgs = mockList.mock.calls[0][0] as Record<string, unknown>;
-    expect(callArgs.after).toBe('some-cursor');
+    expect(getFirstCallArgs()).toMatchObject({
+      after: 'some-cursor',
+    });
+  });
+
+  test('passes before cursor to SDK', async () => {
+    spies = setupOutputSpies();
+
+    const { listDomainsCommand } = await import(
+      '../../../src/commands/domains/list'
+    );
+    await listDomainsCommand.parseAsync(['--before', 'some-cursor'], {
+      from: 'user',
+    });
+
+    expect(getFirstCallArgs()).toMatchObject({
+      before: 'some-cursor',
+    });
+  });
+
+  test('errors when both after and before cursors are provided', async () => {
+    setNonInteractive();
+    errorSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    exitSpy = mockExitThrow();
+
+    const { listDomainsCommand } = await import(
+      '../../../src/commands/domains/list'
+    );
+    await expectExit1(() =>
+      listDomainsCommand.parseAsync(
+        ['--after', 'cursor_after', '--before', 'cursor_before'],
+        { from: 'user' },
+      ),
+    );
+
+    expect(mockList).not.toHaveBeenCalled();
+    const output = errorSpy.mock.calls.map((c) => c[0]).join(' ');
+    expect(output).toContain('invalid_pagination');
   });
 
   test('uses default limit of 10 when not specified', async () => {
@@ -121,8 +182,7 @@ describe('domains list command', () => {
     );
     await listDomainsCommand.parseAsync([], { from: 'user' });
 
-    const callArgs = mockList.mock.calls[0][0] as Record<string, unknown>;
-    expect(callArgs.limit).toBe(10);
+    expect(getFirstCallArgs()).toMatchObject({ limit: 10 });
   });
 
   test('errors with auth_error when no API key', async () => {
