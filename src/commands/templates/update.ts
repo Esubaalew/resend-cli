@@ -87,8 +87,6 @@ export const updateTemplateCommand = new Command('update')
       );
     }
 
-    const id = await pickId(idArg, templatePickerConfig, globalOpts);
-
     if (
       opts.reactEmail != null &&
       (opts.html != null || opts.htmlFile != null)
@@ -122,6 +120,8 @@ export const updateTemplateCommand = new Command('update')
         { json: globalOpts.json },
       );
     }
+
+    const id = await pickId(idArg, templatePickerConfig, globalOpts);
 
     let html = opts.html;
     let text = opts.text;
@@ -159,7 +159,7 @@ export const updateTemplateCommand = new Command('update')
             ...(opts.from != null && { from: opts.from }),
             ...(opts.replyTo != null && { replyTo: opts.replyTo }),
             ...(opts.alias != null && { alias: opts.alias }),
-            ...(opts.var && { variables: parseVariables(opts.var) }),
+            ...(opts.var != null && { variables: parseVariables(opts.var) }),
           }),
         errorCode: 'update_error',
         successMsg: `\nTemplate updated: ${id}`,

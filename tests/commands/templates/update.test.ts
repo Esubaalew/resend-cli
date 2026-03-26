@@ -84,6 +84,42 @@ describe('templates update command', () => {
     return firstCall[1];
   }
 
+  test('updates template name', async () => {
+    spies = setupOutputSpies();
+
+    const { updateTemplateCommand } = await import(
+      '../../../src/commands/templates/update'
+    );
+    await updateTemplateCommand.parseAsync(
+      ['tmpl_abc123', '--name', 'Updated Name'],
+      { from: 'user' },
+    );
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdate.mock.calls[0][0]).toBe('tmpl_abc123');
+    const payload = getUpdatePayload() as Record<string, unknown>;
+    expect(payload.name).toBe('Updated Name');
+  });
+
+  test('omits fields not provided from SDK payload', async () => {
+    spies = setupOutputSpies();
+
+    const { updateTemplateCommand } = await import(
+      '../../../src/commands/templates/update'
+    );
+    await updateTemplateCommand.parseAsync(
+      ['tmpl_abc123', '--subject', 'New Subject'],
+      { from: 'user' },
+    );
+
+    const payload = getUpdatePayload() as Record<string, unknown>;
+    expect(payload.subject).toBe('New Subject');
+    expect(payload).not.toHaveProperty('name');
+    expect(payload).not.toHaveProperty('html');
+    expect(payload).not.toHaveProperty('text');
+    expect(payload).not.toHaveProperty('from');
+  });
+
   test('errors with no_changes before trying to pick an id', async () => {
     setNonInteractive();
     errorSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
